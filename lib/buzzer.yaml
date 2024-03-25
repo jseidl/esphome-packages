@@ -1,0 +1,17 @@
+api:
+  services:
+    - service: play_buzzer
+      variables:
+        song_str: string
+      then:
+        - rtttl.play:
+            rtttl: !lambda 'return song_str;'
+
+# Buzzer
+output:
+  - platform: ledc
+    pin: ${buzzer_gpio}
+    id: buzzer
+
+rtttl:
+  output: buzzer

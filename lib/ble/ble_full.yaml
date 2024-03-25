@@ -1,0 +1,2 @@
+<<: !include ble_tracker.yaml
+<<: !include ble_proxy.yaml

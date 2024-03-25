@@ -1,0 +1,56 @@
+esphome:
+  on_boot:
+  - priority: 900.0
+    then:
+      - lambda: |-
+          id(cpu_speed) = ESP.getCpuFreqMHz();
+
+globals:
+  - id: cpu_speed
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+# Common entities
+button:
+  - platform: safe_mode
+    name: ${friendly_name} Safe Mode Boot
+    entity_category: config
+  - platform: restart
+    name: ${friendly_name} Restart
+    entity_category: config
+
+binary_sensor:
+  - platform: status
+    name: ${friendly_name} Status
+    entity_category: diagnostic
+    id: ha_connected
+
+sensor:
+  - platform: uptime
+    name: ${friendly_name} Uptime
+    entity_category: diagnostic
+  - platform: template
+    name: "ESP Cpu Speed"
+    accuracy_decimals: 0
+    unit_of_measurement: Mhz
+    lambda: |-
+      return (id(cpu_speed));
+    entity_category: "diagnostic"
+
+  - platform: internal_temperature
+    name: ${friendly_name} ESP Temperature
+    id: sys_esp_temperature
+
+  - platform: template
+    id: esp_memory
+    icon: mdi:memory
+    name: ${friendly_name} ESP Free Memory
+    lambda: return heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024;
+    unit_of_measurement: "kB"
+    state_class: measurement
+    entity_category: "diagnostic"
+
+time:
+  - platform: sntp
+    id: time_sntp

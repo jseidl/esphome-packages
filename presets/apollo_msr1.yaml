@@ -1,0 +1,109 @@
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  comment: Apollo Multisensor Mk1 (MSR-1)
+  name_add_mac_suffix: true
+  platformio_options:
+    board_build.flash_mode: dio
+  project:
+    name: "ApolloAutomation.MSR-1"
+    version: "${version}"
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Set Up Key Ports For Communication
+i2c:
+  sda: GPIO1
+  scl: GPIO0
+  id: i2c_bus
+
+uart:
+  tx_pin: GPIO21
+  rx_pin: GPIO20
+  baud_rate: 256000
+  parity: NONE
+  stop_bits: 1
+  id: uart_bus
+
+packages:
+  wifi: !include ../lib/wifi.yaml
+  base: !include ../lib/base.yaml
+  ld2410_radar: !include 
+    file: ../lib/ld2410.yaml
+    vars:
+      uart_busid: uart_bus
+  bme_280: !include
+    file: ../lib/bme280.yaml
+    vars:
+      bme_i2c_address: 0x76
+      bme_i2c_busid: i2c_bus
+  ltr_390: !include ../lib/ltr390.yaml
+  buzzer: !include
+    file: ../lib/buzzer.yaml
+    vars: 
+      buzzer_gpio: GPIO10
+
+globals:
+  - id: cycleCounter
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+api:
+  on_client_connected:
+    - delay: 1s
+    - light.turn_off: rgb_light
+    - lambda: 'id(cycleCounter) = 30;'
+  
+light:
+  - platform: neopixelbus
+    id: rgb_light
+    type: GRB
+    variant: WS2812x
+    pin: GPIO3
+    num_leds: 1
+    name: ${friendly_name} RGB Light
+    method:
+      type: esp32_rmt
+      channel: 0
+
+switch:
+  - platform: template
+    name: ${friendly_name} Startup Light Blink
+    id: startup_light_blink
+    icon: mdi:lightbulb
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    entity_category: "config"
+
+#Used To Control RGB Light On Startup. Tells User Status Of Device
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            - binary_sensor.is_off: ha_connected
+            - lambda: 'return id(cycleCounter) < 30;'
+            - switch.is_on: startup_light_blink
+
+          then:
+            - light.toggle:
+                id: rgb_light
+            - lambda: 'id(cycleCounter) += 1;'
+
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            - binary_sensor.is_off: ha_connected
+            - lambda: 'return id(cycleCounter) > 30;'
+            - lambda: 'return id(cycleCounter) < 31;'
+            - switch.is_on: startup_light_blink
+
+          then:
+            - light.turn_off:
+                id: rgb_light
+            - lambda: 'id(cycleCounter) += 1;'

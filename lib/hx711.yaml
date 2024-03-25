@@ -1,0 +1,131 @@
+globals:
+  - id: ${scale_id}_initial_zero
+    type: float
+    restore_value: yes
+    # NOTE: make sure to align this value to the one used in "calibrate_linear" below!
+    initial_value: '236578'
+    
+  - id: ${scale_id}_auto_tare_enabled
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+
+  - id: ${scale_id}_auto_tare_difference
+    type: float
+    restore_value: yes
+    initial_value: '0'
+
+## Switch to enable/disable the auto tare feature
+switch:
+  - platform: template
+    id: ${scale_id}_scale_continuous_tare_enabled
+    name: ${friendly_name} ${scale_name} Continuous Tare Enabled
+    lambda: |-
+      return id(${scale_id}_auto_tare_enabled);
+    turn_on_action:
+      - lambda: |-
+          id(${scale_id}_auto_tare_enabled) = true;
+    turn_off_action:
+      - lambda: |-
+          id(${scale_id}_auto_tare_enabled) = false;
+
+## Button used to initiate a manual tare
+button:
+  - platform: template
+    id: ${scale_id}_scale_manual_tare_action_switch
+    name: ${friendly_name} ${scale_name} Manual Tare Action
+    on_press:
+      - lambda: |-
+          id(${scale_id}_auto_tare_difference) = id(${scale_id}_initial_zero) - id(${scale_id}_scale_hx711_value_raw).state;
+
+## Sensor Configuration ##
+sensor:
+  # template sensors from global variables
+  - platform: template
+    id: ${scale_id}_scale_initial_zero
+    name: "${friendly_name} ${scale_name} Initial Zero"
+    lambda: |-
+      return id(${scale_id}_initial_zero);
+    update_interval: 1s
+    
+  - platform: template
+    id: ${scale_id}_scale_${scale_id}_auto_tare_difference
+    name: "${friendly_name} ${scale_name} Auto Tare Difference"
+    lambda: |-
+      return id(${scale_id}_auto_tare_difference);
+    update_interval: 1s
+
+  # RAW Scale input
+  - platform: hx711
+    id: ${scale_id}_scale_hx711_value_raw
+    #internal: True
+    name: "${friendly_name} ${scale_name} Raw Value"
+    dout_pin: ${dout_pin}
+    clk_pin: ${clk_pin}
+    gain: 128
+    update_interval: 1s
+    filters:
+      - sliding_window_moving_average:
+          window_size: 3
+          send_every: 1
+    on_value:
+      then:
+        - sensor.template.publish:
+            id: ${scale_id}_scale_hx711_value
+            state: !lambda 'return id(${scale_id}_scale_hx711_value_raw).state;'
+        - if:
+            condition:
+              - lambda: 'return id(${scale_id}_auto_tare_enabled);'
+            then:
+              - if:
+                  condition:
+                    # current raw scale value is below expected zero value
+                    - lambda: 'return id(${scale_id}_scale_hx711_value_raw).state < (id(${scale_id}_initial_zero) - id(${scale_id}_auto_tare_difference));'
+                  then:
+                    # INcrease Auto-Tare offset to slowly align real zero value with expected zero value
+                    - lambda: |-
+                        id(${scale_id}_auto_tare_difference) += 10;
+                  else:
+                    # DEcrease Auto-Tare offset to slowly align real zero value with expected zero value
+                    - lambda: |-
+                        id(${scale_id}_auto_tare_difference) -= 10;
+    
+  # Mapped value to KG
+  - platform: template
+    id: ${scale_id}_scale_hx711_value
+    name: "${friendly_name} ${scale_name} Value"
+    internal: False
+    filters:
+      # apply auto_tare difference
+      - lambda: 'return x + id(${scale_id}_auto_tare_difference);'
+      # apply rough calibration
+      - calibrate_linear:
+          # retrieve these values by evaluating the raw values with loads of known mass.
+          # note that a bigger difference between measurements usually results in higher resolution,
+          # so measure 0 Kg and the highest known mass you have (like f.ex. your own weight, measured by a normal scale with good accuracy)
+          - 236578 -> 0
+          - 1720800 -> 54.6
+          - 2079054 -> 69.8
+      # map values below 0.1 to 0 (to decrease value changes due to random fluctuation)
+      - lambda: |-
+          if (x <= 0.1) {
+            return 0.0;
+          } else {
+            return x;
+          }
+
+    unit_of_measurement: kg
+    accuracy_decimals: 3
+    update_interval: 0.2s
+    
+## Presence binary sensor
+binary_sensor:
+  - platform: template
+    name: ${friendly_name} ${scale_name}
+    device_class: occupancy
+    lambda: |-
+      if (id(${scale_id}_scale_hx711_value).state > 0.0) {
+        return true;
+      } else {
+        return false;
+      }

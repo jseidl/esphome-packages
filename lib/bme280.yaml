@@ -1,0 +1,49 @@
+# Numbers For Configuration
+number:
+  - platform: template
+    name: ${friendly_name} BME280 Humidity Offset
+    id: bme280_humidity_offset
+    restore_value: true
+    initial_value: -18.86
+    min_value: -70.0
+    max_value: 70.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "%"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    mode: box
+
+  - platform: template
+    name: ${friendly_name} BME280 Temperature Offset
+    id: bme280_temperature_offset
+    restore_value: true
+    initial_value: 14.54
+    min_value: -70.0
+    max_value: 70.0
+    entity_category: "CONFIG"
+    unit_of_measurement: "°C"
+    optimistic: true
+    update_interval: never
+    step: 0.1
+    mode: box
+
+sensor:
+  - platform: bme280
+    id: bme_280
+    temperature:
+      name: ${friendly_name} BME280 Temperature
+      id: bme280temperature
+      filters:
+        - lambda: return x - id(bme280_temperature_offset).state;
+    pressure:
+      name: "BME280 Pressure"
+      id: bme280pressure
+    humidity:
+      name: "BME280 Humidity"
+      id: bme280humidity
+      filters:
+        - lambda: return x - id(bme280_humidity_offset).state;
+    update_interval: 60s
+    address: ${bme_i2c_address}
+    i2c_id: ${bme_i2c_busid}

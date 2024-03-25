@@ -1,0 +1,8 @@
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  platform: ESP8266
+  board: d1_mini
+
+<<: !include ../lib/wifi.yaml
+<<: !include ../lib/base.yaml

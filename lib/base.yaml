@@ -1,0 +1,15 @@
+# Enable logging
+logger:
+  level: INFO
+
+network:
+    enable_ipv6: false
+    
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  password: !secret ota_password
+
+<<: !include common.yaml

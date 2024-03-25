@@ -1,0 +1,18 @@
+sensor:
+  - platform: ltr390
+    id: ltr_390
+    uv:
+      name: ${friendly_name} LTR390 UV
+      id: ltr390uv
+      disabled_by_default: true
+    light:
+      name: ${friendly_name} LTR390 Light
+      id: ltr390light
+      disabled_by_default: true
+    uv_index:
+      name: ${friendly_name} LTR390 UV Index
+      id: ltr390uvindex
+    ambient_light:
+      name: ${friendly_name} LTR390 Ambient Light
+      id: ltr390ambientlight
+    update_interval: 60s

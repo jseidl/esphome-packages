@@ -1,0 +1,9 @@
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: nodemcu-32s
+
+<<: !include ../lib/wifi_for_ble.yaml
+<<: !include ../lib/base.yaml

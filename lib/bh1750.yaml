@@ -1,0 +1,17 @@
+binary_sensor:
+  - platform: template
+    name: "${friendly_name} Light"
+    device_class: light
+    lambda: |-
+      if (id(bh1750_light_sensor).state > 10) {
+        return true;
+      } else {
+        return false;
+      }
+
+sensor:
+  - platform: bh1750
+    id: bh1750_light_sensor
+    name: "${friendly_name} Illuminance"
+    address: 0x23
+    update_interval: 60s
